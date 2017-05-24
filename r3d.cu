@@ -179,7 +179,7 @@ void medium_GPU(size_t size, float *pos){
 		//fclose(f);
 	}
 	else
-		printf("No sorted\n");
+		printf("Not sorted\n");
 }
 
 __global__ void real2Complex(float *a, cufftComplex *c, size_t N){
@@ -275,11 +275,11 @@ extern "C"{
 		printf("\tms: %f\n\n",((double)(t_fin-t_ini)/CLOCKS_PER_SEC)*1000);		
 		//fprintf(f, "%f %f\n", milliseconds, ((double)(t_fin-t_ini)/CLOCKS_PER_SEC)*1000);
 		//fclose(f);      	   
-		return average_cpu;
+		return avg_gpu;
 	}
 	
    	//Calculate the medium value   	
-	void calc_medium(size_t size, float *pos){
+	float calc_medium(size_t size, float *pos){
 		medium_GPU(size, pos);
 		//FILE *f = fopen("times_Medium.csv", "a");
 		t_ini=clock();
@@ -289,9 +289,10 @@ extern "C"{
 		printf("\tms: %f\n\n",((double)(t_fin-t_ini)/CLOCKS_PER_SEC)*1000);
 		//fprintf(f, " %f\n", ((double)(t_fin-t_ini)/CLOCKS_PER_SEC)*1000);
 		//fclose(f);
+		return M;		
 	}
 	//Calculate the standard deviation value
-	void calc_StDev(size_t size, float *pos){		
+	float calc_StDev(size_t size, float *pos){		
 		float result;
 		float *d_pos, *medium, *m, *SD, *sd;
 		int block, thread;
@@ -349,10 +350,11 @@ extern "C"{
 		printf("\tms: %f\n\n",((double)(t_fin-t_ini)/CLOCKS_PER_SEC)*1000);
 		//fprintf(f, "%f %f\n", milliseconds, ((double)(t_fin-t_ini)/CLOCKS_PER_SEC)*1000);
 		//fclose(f);
+		return sd_result;
 	}
 	//Calculate the minimum and maximum value existing in dataset
-	void calc_MaxMin(size_t size, float *pos){		
-		int d_max, d_min;
+	float calc_Max(size_t size, float *pos){		
+		int d_max;
 		float *d_pos;    
 		//FILE *f = fopen("times_maxmin.csv", "a");
 
@@ -364,7 +366,48 @@ extern "C"{
 	   	cudaEventCreate(&stop);
 	   	cudaEventRecord(start, 0);
 		
-		cublasIsamax(handle, size, d_pos,1,&d_max);
+		cublasIsamax(handle, size, d_pos,1,&d_max);		
+
+		cudaEventSynchronize(stop);
+	    	cudaEventRecord(stop, 0);	    	    	
+	    	cudaEventSynchronize(stop);		
+		cudaEventElapsedTime(&milliseconds, start, stop);		
+
+		cudaFree(d_pos);
+		cublasDestroy(handle);
+		printf("GPU:\n");
+		printf(" - Maximun: %f\n", pos[d_max-1]);
+		printf("\tms: %f\n",milliseconds);
+
+		float max = 0;
+		
+		t_ini=clock();
+		qsort(pos, size, sizeof(float), &compare);
+		max = pos[size-1];
+		t_fin=clock();
+
+		printf("CPU:\n");
+		printf(" - Maximun: %f\n", max);
+		printf("\tms: %f\n\n",((double)(t_fin-t_ini)/CLOCKS_PER_SEC)*1000);
+		//fprintf(f, "%f %f\n", milliseconds, ((double)(t_fin-t_ini)/CLOCKS_PER_SEC)*1000);
+		//fclose(f);		
+		return max;
+	}
+
+	//Calculate the minimum and maximum value existing in dataset
+	float calc_Min(size_t size, float *pos){		
+		int d_min;
+		float *d_pos;    
+		//FILE *f = fopen("times_maxmin.csv", "a");
+
+		cublasCreate(&handle);
+		cudaMalloc((void **)&d_pos, size * sizeof(float));
+		cudaMemcpy(d_pos, pos, size * sizeof(float), cudaMemcpyHostToDevice);
+
+		cudaEventCreate(&start);
+	   	cudaEventCreate(&stop);
+	   	cudaEventRecord(start, 0);
+		
 		cublasIsamin(handle, size, d_pos,1,&d_min);
 
 		cudaEventSynchronize(stop);
@@ -376,39 +419,38 @@ extern "C"{
 		cublasDestroy(handle);
 		printf("GPU:\n");
 		printf(" - Minimum: %f\n", pos[d_min-1]);
-		printf(" - Maximun: %f\n", pos[d_max-1]);
 		printf("\tms: %f\n",milliseconds);
 
 		float min = 0;
-		float max = 0;
-		
+
 		t_ini=clock();
 		qsort(pos, size, sizeof(float), &compare);
 		min = pos[0];
-		max = pos[size-1];
 		t_fin=clock();
 
 		printf("CPU:\n");
 		printf(" - Minimum: %f\n", min);
-		printf(" - Maximun: %f\n", max);
 		printf("\tms: %f\n\n",((double)(t_fin-t_ini)/CLOCKS_PER_SEC)*1000);
 		//fprintf(f, "%f %f\n", milliseconds, ((double)(t_fin-t_ini)/CLOCKS_PER_SEC)*1000);
 		//fclose(f);		
+		return min;
 	}
 
-	__host__ void voxelization() {
-		cudaEventCreate(&start);
-		cudaEventCreate(&stop);
-		cudaEventRecord(start);
-		setbuf(stdout, NULL);		
+	__host__ float* voxelization(size_t size, float *pos, float *results) {
+		
+		results[0] = calc_avg(size, pos);					
+		results[1] = calc_medium(size, pos);
+		results[2] = calc_StDev(size, pos);
+		results[3] = calc_Max(size, pos);
+		results[4] = calc_Min(size, pos);
+		calc_FFT(size, pos);		
 
-		// free device arrays
-		cudaEventSynchronize(stop);
-		float ms = 0;
-		cudaEventElapsedTime(&ms, start, stop);
-		printf("\n\n");
-		printf("milliseconds: %f\n", ms);
-		printf("Testing compilation\n");
-		return;
+		printf("\n\n\n\n");
+		int i = 0;
+		for(i=0; i<5; i++){
+			printf("%f\n", results[i]);
+		}
+		
+		return results;
 	}
 }

@@ -44,19 +44,23 @@ class gadget:
        
 s = gadget(file)
 os.chdir(".")
+os.system("clear")
+os.system("rm *.so")
 os.system("make")
 
+dll = ctypes.CDLL('./libr3d.so', mode=ctypes.RTLD_GLOBAL)
+
 def get_avg():
-    dll = ctypes.CDLL('./libr3d.so', mode=ctypes.RTLD_GLOBAL)
-    func = dll.calc_avg
-    func.argtypes = [c_size_t, POINTER(c_float)]    
+    global dll
+    func = dll.calc_avg    
     func.restype = c_float
+    func.argtypes = [c_size_t, POINTER(c_float)]    
     return func
 
 __average = get_avg()
 
 def get_medium():
-    dll = ctypes.CDLL('./libr3d.so', mode=ctypes.RTLD_GLOBAL)
+    global dll
     func = dll.calc_medium
     func.argtypes = [c_size_t, POINTER(c_float)]
     return func
@@ -64,42 +68,47 @@ def get_medium():
 __medium = get_medium()
 
 def get_stdev():
-    dll = ctypes.CDLL('./libr3d.so', mode=ctypes.RTLD_GLOBAL)
+    global dll
     func = dll.calc_StDev
     func.argtypes = [c_size_t, POINTER(c_float)]
     return func
 
 __sd = get_stdev()
 
-def get_maxmin():
-    dll = ctypes.CDLL('./libr3d.so', mode=ctypes.RTLD_GLOBAL)
-    func = dll.calc_MaxMin
+def get_max():
+    global dll
+    func = dll.calc_Max
     func.argtypes = [c_size_t, POINTER(c_float)]
     return func
 
-__maxmin = get_maxmin()
+__max = get_max()
+
+def get_min():
+    global dll
+    func = dll.calc_Min
+    func.argtypes = [c_size_t, POINTER(c_float)]
+    return func
+
+__min = get_min()
 
 def get_fft():
-    dll = ctypes.CDLL('./libr3d.so', mode=ctypes.RTLD_GLOBAL)
+    global dll
     func = dll.calc_FFT
     func.argtypes = [c_size_t, POINTER(c_float)]
     return func
 
 __fft = get_fft()
 
-def voxelization():
-    dll = ctypes.CDLL('./libr3d.so', mode=ctypes.RTLD_GLOBAL)
-    func = dll.voxelization    
-    return func
+#def voxelization(size, pos, res):
+def voxelization(size, pos, res):
+    
+    return res
 
-__vox = voxelization()
+#__vox = voxelization()
 
 # convenient python wrapper
 # it does all job with types convertation
 # from python ones to C++ ones 
-def voxelization():
-    __vox()
-
 def cuda_average(size, pos):
     pos = pos.ctypes.data_as(POINTER(c_float))
     __average(size, pos)        
@@ -112,9 +121,13 @@ def cuda_stdev(size, pos):
     pos = pos.ctypes.data_as(POINTER(c_float))
     __sd(size, pos)
 
-def cuda_MaxMin(size, pos):
+def cuda_Max(size, pos):
     pos = pos.ctypes.data_as(POINTER(c_float))
-    __maxmin(size, pos)
+    __max(size, pos)
+
+def cuda_Min(size, pos):
+    pos = pos.ctypes.data_as(POINTER(c_float))
+    __min(size, pos)
 
 def cuda_FFT(size, pos):
     pos = pos.ctypes.data_as(POINTER(c_float))
@@ -122,9 +135,16 @@ def cuda_FFT(size, pos):
 
 if __name__ == '__main__':    
     size=len(s.pos)
-    cuda_average(size, s.pos)    
-    cuda_medium(size, s.pos)
-    cuda_stdev(size, s.pos)    
-    cuda_MaxMin(size, s.pos)    
-    cuda_FFT(size, s.pos)
-    voxelization()
+    res = np.ones(5)
+    Nres = np.ones(5)
+    #cuda_average(size, s.pos)
+    #cuda_medium(size, s.pos)
+    #cuda_stdev(size, s.pos)    
+    #cuda_MaxMin(size, s.pos)    
+    #cuda_FFT(size, s.pos)
+    #print size
+    #print res
+    #print Nres
+    #Nres = voxelization(size, s.pos, res)
+    x = voxelization(size, s.pos, res)
+    print (x)

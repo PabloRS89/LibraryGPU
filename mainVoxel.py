@@ -99,12 +99,15 @@ def get_fft():
 
 __fft = get_fft()
 
-#def voxelization(size, pos, res):
-def voxelization(size, pos, res):
-    
-    return res
 
-#__vox = voxelization()
+def voxelization():
+    global dll
+    func = dll.voxelization
+    func.argtypes = [c_size_t, POINTER(c_float), POINTER(c_float)]
+    return func
+
+__vox = voxelization()
+
 
 # convenient python wrapper
 # it does all job with types convertation
@@ -133,6 +136,11 @@ def cuda_FFT(size, pos):
     pos = pos.ctypes.data_as(POINTER(c_float))
     __fft(size, pos)
 
+def voxelization(size, pos, res):
+    pos = pos.ctypes.data_as(POINTER(c_float))
+    res = ctypes.POINTER(ctypes.c_float )()
+    __vox(size, pos, res)
+
 if __name__ == '__main__':    
     size=len(s.pos)
     res = np.ones(5)
@@ -147,4 +155,3 @@ if __name__ == '__main__':
     #print Nres
     #Nres = voxelization(size, s.pos, res)
     x = voxelization(size, s.pos, res)
-    print (x)

@@ -437,8 +437,18 @@ extern "C"{
 	}
 
 	__host__ float* voxelization(size_t size, float *pos, float *results) {
-		
-		results[0] = calc_avg(size, pos);					
+		int total = sizeof(pos);
+		printf("total%d\n", total);
+		int column = sizeof(pos[0]);
+		printf("column%d\n", column);
+		int row = total / column;
+		printf("row%d\n", row);
+		printf("Total fields: %d\n", total);
+		printf("Number of rows: %d\n", row);
+		printf("Number of columns: %d\n", column);
+
+
+		/*results[0] = calc_avg(size, pos);					
 		results[1] = calc_medium(size, pos);
 		results[2] = calc_StDev(size, pos);
 		results[3] = calc_Max(size, pos);
@@ -450,7 +460,7 @@ extern "C"{
 		for(i=0; i<5; i++){
 			printf("%f\n", results[i]);
 		}
-		
+		*/
 		return results;
 	}
 }
